@@ -5,6 +5,7 @@
 # @Time    : 2022-07-15 下午1:39
 
 
+import binascii
 import logging
 import socket
 import struct
@@ -26,37 +27,45 @@ class ManagerReader(threading.Thread):
         logger.info("有新的易侦客户端连接")
         while True:
             try:
-                for packet in self.recv(constants.MaxLength):
-                    self.message_handler(packet)
+                packet = self.recv()
+                logger.info("接收到易侦的新消息====报文：%s" % packet)
+                self.message_handler(packet)
             except ConnectionResetError as e:
-                logger.error(e)
+                logger.error("易侦客户端断开连接了：%s" % self.fd_key)
                 self.delete_fd(self.fd_key)
                 break
 
     def message_handler(self, packet: bytes) -> typing.NoReturn:
-        logger.info("接收到易侦的新消息：%s" % packet)
+        logger.info("fd_key:%s" % self.fd_key)
+        logger.info("易侦节点标识：%s, 仿真节点标识:%s, 任务id：%s" % (hex(packet[4]), hex(packet[5]), hex(packet[18])))
         constants.ClientMap[self.fd_key] = self.client
         constants.MsgQueue.put(packet)
-        logger.info("新消息放入队列")
+        logger.info("新消息放入队列,当前队列容量： %s" % constants.MsgQueue.qsize())
 
-    def recv(self, max_length: int) -> typing.Optional[typing.Generator]:
+    def recv(self) -> typing.Optional[bytes]:
         """
         获取缓冲区数据
-        :param max_length:
         :return:
         """
-        data = self.client.recv(max_length)
-        if not data:
-            raise ConnectionResetError
-        while data:
-            length = struct.unpack("<L", data[0:4])[0]
-            body = data[4:length]
-            self.fd_key = self.gen_fd_key(body)
-            if not self.check_client():
-                continue
-            packet = data[0:length + 4]
-            data = data[length + 4::]
-            yield packet
+
+        length = 0
+        received = b""
+        while True:
+            if not length:
+                _length = self.client.recv(4)
+                if not _length:
+                    raise ConnectionResetError
+                length = struct.unpack("<L", _length)[0]
+            else:
+                buf = self.client.recv(length - len(received))
+                if not buf:
+                    raise ConnectionResetError
+                received += buf
+                if length == len(received):
+                    self.fd_key = self.gen_fd_key(received[:18])
+                    if not self.check_client():
+                        continue
+                    return _length + received
 
     def check_client(self) -> bool:
         """
@@ -102,21 +111,25 @@ class TransferReader(ManagerReader):
         logger.info("有新的仿真客户端连接")
         while True:
             try:
-                for packet in self.recv(constants.MaxLength):
-                    self.message_handler(packet)
+                packet = self.recv()
+                self.message_handler(packet)
             except ConnectionResetError as e:
                 logger.error(e)
                 logger.error("仿真测可能断开连接")
                 break
 
     def message_handler(self, packet: bytes) -> typing.NoReturn:
-        logger.info("接收到仿真的新消息：%s" % packet)
+        header = binascii.b2a_hex(packet[:18])
+        logger.info("接收到仿真的新消息,协议头：%s" % header)
         if packet[18] == 0x07:
             logger.info("心跳报文丢弃")
             return
         fd = self.get_fd(self.fd_key)
         if fd:
-            logger.info("找到易侦的句柄:%s" % fd)
-            logger.info("开始发送数据:%s" % packet)
+            logger.info("找到易侦的客户端句柄:%s" % self.fd_key)
+            logger.info("开始向易侦返回数据，协议头:%s" % header)
             fd.sendall(packet)
+            logger.info("向易侦返回成功")
             self.delete_fd(self.fd_key)
+        else:
+            logger.error("未找易侦的客户端句柄:%s" % self.fd_key)

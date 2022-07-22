@@ -76,14 +76,18 @@ class TransferClient(threading.Thread):
 
     def run(self) -> typing.NoReturn:
         while True:
-            packet = constants.MsgQueue.get()
+            try:
+                packet = constants.MsgQueue.get(block=False)
+            except Exception:
+                continue
             if not self.notify:
                 self.send_ident(packet)
             while True:
                 try:
-                    logger.info("获取到新的消息")
-                    logger.info("Mgr开始向仿真发送报文：%s" % packet)
+                    logger.info("获取到新的消息:%s" % packet)
+                    logger.info("Mgr开始向仿真发送报文")
                     self._sock.sendall(packet)
+                    logger.info("Mgr向仿真发送完成")
                     break
                 except Exception:
                     logger.error("仿真服务可能不存在发送失败，重新连接")
