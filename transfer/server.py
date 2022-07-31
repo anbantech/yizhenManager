@@ -5,7 +5,6 @@
 # @Time    : 2022-07-14 上午10:20
 
 
-import logging
 import selectors
 import socket
 import threading
@@ -19,8 +18,6 @@ elif hasattr(selectors, "PollSelector"):
     Selector = selectors.PollSelector
 else:
     Selector = selectors.SelectSelector
-
-logger = logging.getLogger("Logger")
 
 
 class Server(threading.Thread):

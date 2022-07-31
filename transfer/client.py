@@ -12,9 +12,8 @@ import threading
 import typing
 
 import constants
-import logging
 
-logger = logging.getLogger("Logger")
+from logger import logger
 
 
 class TransferClient(threading.Thread):

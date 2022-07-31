@@ -6,14 +6,17 @@
 
 
 import binascii
-import logging
 import socket
 import struct
 import threading
 import typing
 import constants
 
-logger = logging.getLogger("Logger")
+from logger import logger
+
+from rwlock import RWLock
+
+rwlock = RWLock()
 
 
 class ManagerReader(threading.Thread):
@@ -38,7 +41,9 @@ class ManagerReader(threading.Thread):
     def message_handler(self, packet: bytes) -> typing.NoReturn:
         logger.info("fd_key:%s" % self.fd_key)
         logger.info("易侦节点标识：%s, 仿真节点标识:%s, 任务id：%s" % (hex(packet[4]), hex(packet[5]), hex(packet[18])))
+        rwlock.writer_lock.acquire()
         constants.ClientMap[self.fd_key] = self.client
+        rwlock.writer_lock.release()
         constants.MsgQueue.put(packet)
         logger.info("新消息放入队列,当前队列容量： %s" % constants.MsgQueue.qsize())
 
@@ -89,6 +94,9 @@ class ManagerReader(threading.Thread):
         :return:
         """
         try:
+            rwlock.writer_lock.acquire()
+            constants.ClientMap[key] = None
+            rwlock.writer_lock.release()
             del constants.ClientMap[key]
             logger.info("删除句柄成功%s" % key)
         except Exception:
@@ -101,7 +109,10 @@ class ManagerReader(threading.Thread):
         :return:
         """
         try:
-            return constants.ClientMap[key]
+            rwlock.reader_lock.acquire()
+            fd = constants.ClientMap[key]
+            rwlock.reader_lock.release()
+            return fd
         except Exception:
             return None
 

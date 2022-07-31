@@ -7,39 +7,53 @@
 
 import os
 
+from logging import (
+    Formatter,
+    getLogger,
+    Handler,
+    INFO,
+    Logger,
+    LogRecord,
+    StreamHandler,
+)
+
+from logging.handlers import (
+    RotatingFileHandler,
+    QueueListener,
+    QueueHandler as BaseQueueHandler
+)
+from queue import SimpleQueue as Queue
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+file_handler = RotatingFileHandler(filename=BASE_DIR + "/logs/manager.log",
+                                   maxBytes=300 * 1024 * 1024,
+                                   backupCount=10)
+file_handler.setFormatter(Formatter('%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'))
 
-config = {
+console_handler = StreamHandler()
+console_handler.setFormatter(Formatter('%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'))
 
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'
-        }
-    },
-    'handlers': {
-        'console': {
-            'level': 'INFO',
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose'
-        },
 
-        'manager_file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': (BASE_DIR + "/logs/manager.log"),
-            'maxBytes': 300 * 1024 * 1024,
-            'backupCount': 10,
-            'formatter': 'verbose'
-        },
+class QueueHandler(BaseQueueHandler):
 
-    },
-    'loggers': {
-        'Logger': {
-            'handlers': ['manager_file', "console"],
-            'propagate': True,
-            'level': 'INFO',
-        }
-    }
-}
+    def prepare(self, record: LogRecord) -> LogRecord:
+        return record
+
+
+def setup_logging_queue(*handlers: Handler) -> QueueHandler:
+    queue: Queue = Queue()
+    queue_handler = QueueHandler(queue)
+    listener = QueueListener(queue, *handlers, respect_handler_level=True)
+    listener.start()
+    return queue_handler
+
+
+def new_logger(level=INFO) -> Logger:
+    logger = getLogger("Logger")
+    logger.setLevel(level)
+    queue_handler = setup_logging_queue(file_handler, console_handler)
+    logger.addHandler(queue_handler)
+    return logger
+
+
+logger = new_logger(INFO)

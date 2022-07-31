@@ -5,21 +5,13 @@
 # @Time    : 2022-07-14 上午10:20
 
 import os
-import logging.config
-import logging
 import typing
 
 from configparser import ConfigParser
 
-from logger import config
-
 from transfer.reader import TransferReader, ManagerReader
 from transfer.client import TransferClient
 from transfer.server import Server, TransferServer
-
-logging.config.dictConfig(config)
-
-logger = logging.getLogger("Logger")
 
 
 class Manager(object):
