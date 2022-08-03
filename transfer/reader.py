@@ -35,7 +35,7 @@ class ManagerReader(threading.Thread):
                 self.message_handler(packet)
             except ConnectionResetError as e:
                 logger.error("易侦客户端断开连接了：%s" % self.fd_key)
-                self.delete_fd(self.fd_key)
+                self.delete_fd(self.fd_key, close=True)
                 break
 
     def message_handler(self, packet: bytes) -> typing.NoReturn:
@@ -87,20 +87,25 @@ class ManagerReader(threading.Thread):
         """
         return data[2:6] + data[10:14]
 
-    def delete_fd(sel, key: bytes) -> typing.NoReturn:
+    def delete_fd(sel, key: bytes, close: bool) -> typing.NoReturn:
         """
         删除句柄
         :param key:
+        :param close:
         :return:
         """
+        rwlock.writer_lock.acquire()
         try:
-            rwlock.writer_lock.acquire()
+            if close:
+                fd = constants.ClientMap[key]
+                fd.close()
             constants.ClientMap[key] = None
-            rwlock.writer_lock.release()
             del constants.ClientMap[key]
             logger.info("删除句柄成功%s" % key)
         except Exception:
             logger.info("删除句柄失败%s" % key)
+        finally:
+            rwlock.writer_lock.release()
 
     def get_fd(self, key: bytes) -> typing.Optional[socket.socket]:
         """
@@ -108,13 +113,14 @@ class ManagerReader(threading.Thread):
         :param key:
         :return:
         """
+        rwlock.reader_lock.acquire()
         try:
-            rwlock.reader_lock.acquire()
             fd = constants.ClientMap[key]
-            rwlock.reader_lock.release()
             return fd
         except Exception:
             return None
+        finally:
+            rwlock.reader_lock.release()
 
 
 class TransferReader(ManagerReader):
@@ -125,6 +131,7 @@ class TransferReader(ManagerReader):
                 packet = self.recv()
                 self.message_handler(packet)
             except ConnectionResetError as e:
+                self.client.close()
                 logger.error(e)
                 logger.error("仿真测可能断开连接")
                 break
@@ -141,6 +148,6 @@ class TransferReader(ManagerReader):
             logger.info("开始向易侦返回数据，协议头:%s" % header)
             fd.sendall(packet)
             logger.info("向易侦返回成功")
-            self.delete_fd(self.fd_key)
+            self.delete_fd(self.fd_key, close=False)
         else:
             logger.error("未找易侦的客户端句柄:%s" % self.fd_key)
