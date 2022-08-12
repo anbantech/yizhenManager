@@ -85,7 +85,8 @@ class ManagerReader(threading.Thread):
         :param data:
         :return:
         """
-        return data[2:6] + data[10:14]
+        return data[2:6]
+        # return data[2:6] + data[10:14]
 
     def delete_fd(sel, key: bytes, close: bool) -> typing.NoReturn:
         """
@@ -148,6 +149,6 @@ class TransferReader(ManagerReader):
             logger.info("开始向易侦返回数据，协议头:%s" % header)
             fd.sendall(packet)
             logger.info("向易侦返回成功")
-            self.delete_fd(self.fd_key, close=False)
+            # self.delete_fd(self.fd_key, close=False)
         else:
             logger.error("未找易侦的客户端句柄:%s" % self.fd_key)
