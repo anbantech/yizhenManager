@@ -1,7 +1,7 @@
-FROM python:3.8-alpine
+FROM 15824898302/protocolfuzz:latest
 ENV TIME_ZONE=Asia/Shanghai
 WORKDIR /root/yizhenManager
 ADD . /root/yizhenManager
-RUN mv /usr/local/bin/python3.8 /usr/local/bin/python3.8.bak
-ADD ./lib/python3.8 /usr/local/bin/python3.8
+RUN mv /usr/bin/python3.8 /usr/bin/python3.8.bak
+ADD ./lib/python3.8 /usr/bin/python3.8
 CMD /root/yizhenManager/run.sh
