@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# @Name    : main
+# @Name    : server
 # @Author  : Malei
 # @Email   : malei@anban.tech
 # @Time    : 2022-07-14 上午10:20
@@ -36,6 +36,7 @@ class Server(threading.Thread):
         self.server_address = (host, port)
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_KEEPALIVE, True)
         self._shutdown = False
         self._reader = reader
         try:

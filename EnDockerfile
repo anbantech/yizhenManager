@@ -1,7 +1,7 @@
-FROM 15824898302/protocolfuzz:latest
+FROM manager:latest
 ENV TIME_ZONE=Asia/Shanghai
-WORKDIR /root/yizhenManager
-ADD . /root/yizhenManager
+WORKDIR /root/yf
+ADD . /root/yf
 RUN mv /usr/bin/python3.8 /usr/bin/python3.8.bak
 ADD ./lib/python3.8 /usr/bin/python3.8
-CMD /root/yizhenManager/run.sh
+CMD /root/yf/run.sh

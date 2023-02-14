@@ -28,7 +28,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 file_handler = RotatingFileHandler(filename=BASE_DIR + "/logs/manager.log",
                                    maxBytes=300 * 1024 * 1024,
                                    backupCount=10)
+crash_file_handler = RotatingFileHandler(filename=BASE_DIR + "/logs/crash.log",
+                                         maxBytes=300 * 1024 * 1024,
+                                         backupCount=10)
 file_handler.setFormatter(Formatter('%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'))
+crash_file_handler.setFormatter(
+    Formatter('%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'))
 
 console_handler = StreamHandler()
 console_handler.setFormatter(Formatter('%(levelname)s--%(asctime)s--%(module)s--%(pathname)s: %(lineno)d %(message)s'))
@@ -56,4 +61,13 @@ def new_logger(level=INFO) -> Logger:
     return logger
 
 
+def new_crash_logger(level=INFO) -> Logger:
+    logger = getLogger("CrashLogger")
+    logger.setLevel(level)
+    queue_handler = setup_logging_queue(crash_file_handler, console_handler)
+    logger.addHandler(queue_handler)
+    return logger
+
+
 logger = new_logger(INFO)
+crash_logger = new_crash_logger(INFO)

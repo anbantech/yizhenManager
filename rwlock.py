@@ -185,6 +185,7 @@ class RWLock():
     def __init__(self):
         core = self.core()
         self._reader_lock = _ReaderLock(core)
+        self._sender_lock = _WriterLock(core)
         self._writer_lock = _WriterLock(core)
 
     @property
@@ -200,3 +201,10 @@ class RWLock():
         The lock used for write, or exclusive, access
         """
         return self._writer_lock
+
+    @property
+    def sender_lock(self):
+        """
+        The lock used for socket send, or exclusive, access
+        """
+        return self._sender_lock
